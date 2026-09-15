@@ -18,11 +18,11 @@ const EVENTS = [
 		"action": "look_at_phone"
 	},
 	{
-		"id": "golden_02_insurance_story",
+		"id": "golden_02_phone_check",
 		"minutes": 3.0,
-		"kind": "engagement",
-		"npc": NodePath("World/NPC3"),
-		"engagement": "insurance_story"
+		"kind": "ambient",
+		"npc": NodePath("World/InsuranceGuy"),
+		"action": "look_at_phone"
 	},
 	{
 		"id": "golden_03_downtime",

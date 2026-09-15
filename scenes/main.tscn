@@ -5,6 +5,7 @@
 [ext_resource type="Script" uid="uid://ws20v0y23kll" path="res://scripts/ticket_system.gd" id="3_ticket"]
 [ext_resource type="Script" uid="uid://bmuee3drsp46r" path="res://scripts/interactable.gd" id="4_interact"]
 [ext_resource type="PackedScene" path="res://scenes/waiting_npc.tscn" id="5_npc"]
+[ext_resource type="PackedScene" path="res://scenes/insurance_guy.tscn" id="6_insurance"]
 [ext_resource type="Script" uid="uid://dbx6maad5hkub" path="res://scripts/waiting_event_manager.gd" id="7_events"]
 
 [sub_resource type="RectangleShape2D" id="WallHorizontal"]
@@ -328,10 +329,8 @@ shirt_color = Color(0.46, 0.35, 0.62, 1)
 idle_style = 1
 dialogue_text = "I brought three proofs of address. The clerk requested a fourth proof of address."
 
-[node name="NPC3" parent="World" unique_id=9499345 instance=ExtResource("5_npc")]
-position = Vector2(250, 38)
-display_name = "DAVE"
-shirt_color = Color(0.32, 0.5, 0.41, 1)
+[node name="InsuranceGuy" parent="World" instance=ExtResource("6_insurance")]
+position = Vector2(-470, 40)
 
 [node name="NPC4" parent="World" unique_id=1794023891 instance=ExtResource("5_npc")]
 position = Vector2(-260, 165)

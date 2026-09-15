@@ -5,6 +5,7 @@ const HEMORRHOID_MINIGAME = preload("res://scenes/hemorrhoid_minigame.tscn")
 @onready var player = $Player
 @onready var ticket_system = $TicketSystem
 @onready var event_manager = $WaitingEventManager
+@onready var insurance_guy = $World/InsuranceGuy
 @onready var prompt_label: Label = $HUD/PromptPanel/Prompt
 @onready var message_label: Label = $HUD/Message
 @onready var serving_label: Label = $HUD/ServingPanel/Serving
@@ -29,6 +30,9 @@ func _ready():
 	event_manager.minigame_requested.connect(_launch_minigame)
 	event_manager.ambient_action_requested.connect(_perform_ambient_action)
 	event_manager.engagement_requested.connect(_start_engagement)
+	insurance_guy.authored_message.connect(_show_message)
+	GameState.game_loaded.connect(_on_game_loaded)
+	GameState.loop_reset.connect(_on_loop_reset)
 	for object in get_tree().get_nodes_in_group("dmv_interactables"):
 		object.interaction_requested.connect(_on_interaction_requested)
 	_on_serving_changed(GameState.get_now_serving())
@@ -84,6 +88,9 @@ func _on_interaction_requested(object):
 			else:
 				GameState.mark_called()
 				_show_message("YOU MAY APPROACH. PLEASE HAVE EVERY DOCUMENT EVER ISSUED.")
+		"insurance_guy":
+			if not object.begin_player_interruption():
+				_show_message("INSURANCE GUY: \"Sorry—I need to hear this hold music.\"")
 		"npc": _show_message(object.dialogue_text)
 		_: _show_message(object.response_text)
 
@@ -101,6 +108,14 @@ func _on_ticket_issued(_number: int):
 func _update_ticket_label():
 	var ticket_text = "---" if not GameState.has_ticket() else "%03d" % GameState.get_ticket_number()
 	ticket_label.text = "TICKET\n%s" % ticket_text
+
+func _on_game_loaded():
+	_update_ticket_label()
+	_show_message("CURRENT LOOP RESTORED.")
+
+func _on_loop_reset():
+	_update_ticket_label()
+	_show_message("WELCOME TO THE DMV. PLEASE TAKE A TICKET.")
 
 func _make_npc_impatient(npc_path: NodePath):
 	var npc = get_node_or_null(npc_path)
@@ -181,7 +196,7 @@ func _resolve_engagement(listened: bool):
 	_engagement_id = ""
 
 # Lightweight development shortcuts. They are intentionally not part of the
-# player-facing HUD: F5 saves the singleton state and F9 reloads it.
+# player-facing HUD: F5 saves, F9 loads, and F10 resets the current loop.
 func _unhandled_key_input(event):
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
@@ -189,3 +204,5 @@ func _unhandled_key_input(event):
 		_show_message("SAVE %s." % ("COMPLETE" if GameState.save_game() else "FAILED"))
 	elif event.keycode == KEY_F9:
 		_show_message("LOAD %s." % ("COMPLETE" if GameState.load_game() else "FAILED"))
+	elif event.keycode == KEY_F10:
+		GameState.reset_loop()

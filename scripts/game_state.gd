@@ -16,9 +16,11 @@ signal phase_changed(new_phase: String)
 signal wait_time_changed(waiting_minutes: float)
 signal serving_number_changed(number: int)
 signal dmv_announcement(text: String)
+signal game_loaded
+signal loop_reset
 
 const SAVE_PATH := "user://dmv_simulator_save.json"
-const GAME_VERSION := "0.2.1-architecture-1"
+const GAME_VERSION := "0.2.2-insurance-guy-proof"
 
 const PHASES := {
 	"ARRIVAL": "ARRIVAL",
@@ -72,16 +74,7 @@ func reset_new_game():
 		"is_in_minigame": false,
 		"game_over": false,
 	}
-	dmv = {
-		"ticket_number": 0,
-		"now_serving": 118,
-		"has_ticket": false,
-		"waiting_minutes": 0.0,
-		"waiting_time_multiplier": 1.0,
-		"service_completed": false,
-		"triggered_events": {},
-		"completed_minigames": {},
-	}
+	dmv = _default_dmv_state()
 	player_stats = _default_stats()
 	item_catalog = _default_item_catalog()
 	inventory = {}
@@ -101,6 +94,20 @@ func reset_new_game():
 	_service_progress_minutes = 0.0
 	serving_number_changed.emit(get_now_serving())
 	wait_time_changed.emit(get_waiting_minutes())
+
+## Starts the authored DMV loop again without erasing persistent systems such
+## as certifications. Broader persistence rules remain deliberately deferred;
+## this pass only resets state already owned by the DMV loop.
+func reset_loop():
+	dmv = _default_dmv_state()
+	session.current_phase = PHASES.ARRIVAL
+	session.current_location = LOCATIONS.DMV
+	session.is_in_minigame = false
+	session.game_over = false
+	_service_progress_minutes = 0.0
+	serving_number_changed.emit(get_now_serving())
+	wait_time_changed.emit(get_waiting_minutes())
+	loop_reset.emit()
 
 func _process(delta):
 	if get_current_phase() != PHASES.NORMAL_WAITING:
@@ -193,6 +200,15 @@ func mark_event_triggered(event_id: String):
 func has_triggered(event_id: String) -> bool:
 	return dmv.triggered_events.has(event_id)
 
+func get_loop_npc_state(npc_id: String, default_state := {}) -> Dictionary:
+	var npc_states: Dictionary = dmv.get("npc_states", {})
+	return npc_states.get(npc_id, default_state).duplicate(true)
+
+func set_loop_npc_state(npc_id: String, state: Dictionary):
+	if not dmv.has("npc_states"):
+		dmv.npc_states = {}
+	dmv.npc_states[npc_id] = state.duplicate(true)
+
 # Stats are numeric 0-100. Higher is generally better for skills/health and
 # patience; higher is generally worse for hunger, fatigue, pressure, weirdness,
 # hallucination, and sleep deprivation. Callers use these accessors only.
@@ -278,18 +294,18 @@ func set_relationship_affinity(npc_id: String, affinity: int):
 	relationship.affinity = clampi(affinity, -100, 100)
 	npc_relationships[npc_id] = relationship
 
-func save_game() -> bool:
-	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+func save_game(path := SAVE_PATH) -> bool:
+	var file = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
 		push_error("Could not open GameState save file.")
 		return false
 	file.store_string(JSON.stringify(_to_save_data(), "\t"))
 	return true
 
-func load_game() -> bool:
-	if not FileAccess.file_exists(SAVE_PATH):
+func load_game(path := SAVE_PATH) -> bool:
+	if not FileAccess.file_exists(path):
 		return false
-	var file = FileAccess.open(SAVE_PATH, FileAccess.READ)
+	var file = FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		return false
 	var parsed = JSON.parse_string(file.get_as_text())
@@ -299,6 +315,7 @@ func load_game() -> bool:
 	_apply_save_data(parsed)
 	serving_number_changed.emit(get_now_serving())
 	wait_time_changed.emit(get_waiting_minutes())
+	game_loaded.emit()
 	return true
 
 func _to_save_data() -> Dictionary:
@@ -325,6 +342,23 @@ func _apply_save_data(data: Dictionary):
 	item_catalog = data.get("item_catalog", item_catalog)
 	certification_catalog = data.get("certification_catalog", certification_catalog)
 	_service_progress_minutes = float(data.get("service_progress_minutes", 0.0))
+	# Saves from the prototype predate loop-local NPC snapshots. Keep them
+	# loadable and let each authored NPC initialize its baseline when absent.
+	if not dmv.has("npc_states"):
+		dmv.npc_states = {}
+
+func _default_dmv_state() -> Dictionary:
+	return {
+		"ticket_number": 0,
+		"now_serving": 118,
+		"has_ticket": false,
+		"waiting_minutes": 0.0,
+		"waiting_time_multiplier": 1.0,
+		"service_completed": false,
+		"triggered_events": {},
+		"completed_minigames": {},
+		"npc_states": {},
+	}
 
 func _new_minigame_record() -> Dictionary:
 	return {"completed": false, "attempts": 0, "best_score": 0.0, "last_score": 0.0, "result": ""}

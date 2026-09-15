@@ -92,4 +92,4 @@ func _draw():
 	if _engagement_active:
 		draw_circle(Vector2(15, -18), 3.0, Color("ffdc6b"))
 
-	draw_string(ThemeDB.fallback_font, Vector2(-25, 34), display_name, HORIZONTAL_ALIGNMENT_CENTER, 50, 10, Color("d9d6c9"))
+	draw_string(ThemeDB.fallback_font, Vector2(-50, 34), display_name, HORIZONTAL_ALIGNMENT_CENTER, 100, 10, Color("d9d6c9"))
